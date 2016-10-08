@@ -1,0 +1,16 @@
+{
+    "manifest_version": 2,
+    "name": "torelo",
+    "version": "0.1",
+    "description": "Tries to reload the page until it is available",
+    "background": {
+	"scripts": ["torelo.js"]
+    },
+    "page_action": {
+	"default_icon": "images/page_action_38.png"
+    },
+    "permissions": [
+	"tabs",
+	"webRequest"
+    ]
+}
