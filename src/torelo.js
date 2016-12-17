@@ -1,5 +1,9 @@
 console.log('Loading torelo');
+
+import {subdomains} from './domains';
+
 var tabConfig = {};
+var retryHostnames = {};
 
 function updateIcon(tab_id) {
     var path = "";
@@ -13,6 +17,7 @@ function updateIcon(tab_id) {
 
 function disableReload(tab_id) {
     tabConfig[tab_id] = false;
+    updateIcon(tab_id);
 }
 
 function enableReload(tab_id) {
@@ -28,6 +33,7 @@ function responseStartedCallback(details) {
 	} else {
 	    updateIcon(tab.id);
 	    chrome.pageAction.show(tab.id);
+            updateTabs();
 	}
     });
 }
@@ -61,11 +67,65 @@ function pageActionCallback(tab) {
     }
 }
 
+function isRetryEnabledForUrl(url, hostnames) {
+    var hostname = new URL(url).hostname;
+    var domains = subdomains(hostname);
+    for (var i = 0; i < domains.length; i++) {
+        if (hostnames[domains[i]]) {
+            return true;
+        }
+    }
+    return false
+}
+
+function updateTabs() {
+    chrome.tabs.query({}, function(tabs) {
+        for (var i = 0; i < tabs.length; i++) {
+            var tab = tabs[i];
+            if (isRetryEnabledForUrl(tab.url, retryHostnames)) {
+                if (!tabConfig[tab.id]) {
+	            enableReload(tab.id);
+	            setupTimer(tab);
+                }
+            } else if(tabConfig[tab.id]) {
+                disableReload(tab.id);
+            }
+        }
+    });
+}
+
+function hostnamesListener(port, message) {
+    if (message.type == 'toggleHostname') {
+        var hostname = message.hostname;
+        if (retryHostnames[hostname]) {
+            delete retryHostnames[hostname];
+        } else {
+            retryHostnames[hostname] = true;
+        }
+        updateTabs();
+        postState(port);
+    }
+}
+
+function postState(port) {
+    port.postMessage({type: 'state', hostnames: retryHostnames});
+}
+
+function onConnectCallback(port) {
+    if (port.name == 'hostnames') {
+        port.onMessage.addListener(function(message) {
+            hostnamesListener(port, message);
+        });
+        postState(port);
+    }
+}
+
 function initialize() {
     var filter = {types: ["main_frame"], urls: ["<all_urls>"]};
+    chrome.runtime.onConnect.removeListener(onConnectCallback);
+    chrome.runtime.onConnect.addListener(onConnectCallback);
     chrome.webRequest.onCompleted.removeListener(responseStartedCallback);
     chrome.webRequest.onCompleted.addListener(responseStartedCallback, filter);
-    chrome.pageAction.onClicked.addListener(pageActionCallback);
 }
 
 initialize();

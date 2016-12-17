@@ -7,7 +7,8 @@
 	"scripts": ["torelo.js"]
     },
     "page_action": {
-	"default_icon": "images/page_action_38.png"
+	"default_icon": "images/page_action_38.png",
+        "default_popup": "popup.html" 
     },
     "permissions": [
 	"tabs",
