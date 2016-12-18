@@ -1,5 +1,3 @@
-console.log('Loading torelo');
-
 import {subdomains} from './domains';
 
 var tabConfig = {};
@@ -50,7 +48,6 @@ function periodicCheck(iteration, tab_id, url) {
 	if (tab.url == url && tabConfig[tab_id]) {
 	    chrome.tabs.reload(tab_id, {bypassCache: true}, function() {
 		var delay = Math.min(60000, 1000 * Math.pow(2, iteration));
-		console.log(iteration + ' - ' + delay);
 		scheduleCheck(delay, Math.min(20, iteration + 1), tab);
 	    });
 	}
@@ -124,4 +121,3 @@ function initialize() {
 }
 
 initialize();
-console.log('Loading completed');
