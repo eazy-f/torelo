@@ -4,6 +4,7 @@ import {subdomains} from './domains';
 
 var tabConfig = {};
 var retryHostnames = {};
+var failedTabs = {};
 
 function updateIcon(tab_id) {
     var path = "";
@@ -28,9 +29,11 @@ function enableReload(tab_id) {
 function responseStartedCallback(details) {
     chrome.tabs.get(details.tabId, function(tab) {
 	if (details.statusCode / 100 == 2) {
+            delete failedTabs[tab.id];
 	    chrome.pageAction.hide(tab.id);
 	    disableReload(tab.id);
 	} else {
+            failedTabs[tab.id] = true;
 	    updateIcon(tab.id);
 	    chrome.pageAction.show(tab.id);
             updateTabs();
@@ -55,15 +58,9 @@ function periodicCheck(iteration, tab_id, url) {
 }
 
 function setupTimer(tab) {
-    scheduleCheck(1000, 1, tab);
-}
-
-function pageActionCallback(tab) {
-    if (tabConfig[tab.id]) {
-	disableReload(tab.id);
-    } else {
+    if (!tabConfig[tab.id]) {
+        scheduleCheck(1000, 1, tab);
 	enableReload(tab.id);
-	setupTimer(tab);
     }
 }
 
@@ -82,11 +79,9 @@ function updateTabs() {
     chrome.tabs.query({}, function(tabs) {
         for (var i = 0; i < tabs.length; i++) {
             var tab = tabs[i];
-            if (isRetryEnabledForUrl(tab.url, retryHostnames)) {
-                if (!tabConfig[tab.id]) {
-	            enableReload(tab.id);
-	            setupTimer(tab);
-                }
+            if (isRetryEnabledForUrl(tab.url, retryHostnames)
+                && failedTabs[tab.id]) {
+	        setupTimer(tab);
             } else if(tabConfig[tab.id]) {
                 disableReload(tab.id);
             }
