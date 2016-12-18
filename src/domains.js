@@ -1,6 +1,6 @@
 export function subdomains(baseDomain) {
     if (baseDomain == "") {
-        return [baseDomain];
+        return [];
     } else {
         if (baseDomain[baseDomain.length - 1] != ".") {
             baseDomain = baseDomain + ".";

@@ -1,20 +1,6 @@
-var port = chrome.runtime.connect({name: 'hostnames'});
+import {subdomains} from './domains';
 
-function subdomains(baseDomain) {
-    if (baseDomain == "") {
-        return [baseDomain];
-    } else {
-        if (baseDomain[baseDomain.length - 1] != ".") {
-            baseDomain = baseDomain + ".";
-        }
-        var parts = baseDomain.split(".");
-        var domains = [];
-        for (var i = 0; i < parts.length; i++) {
-            domains.push(parts.slice(i, parts.length - 1).join("."));
-        }
-        return domains;
-    }
-}
+var port = chrome.runtime.connect({name: 'hostnames'});
 
 port.onMessage.addListener(function(message) {
     if (message.type == 'state') {
