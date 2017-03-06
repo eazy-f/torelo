@@ -11,30 +11,29 @@ function updateIcon(tab_id) {
     } else {
 	path = "images/page_action_38.png";
     }
-    chrome.pageAction.setIcon({path: path, tabId: tab_id});
+    return browser.pageAction.setIcon({path: path, tabId: tab_id});
 }
 
 function disableReload(tab_id) {
     tabConfig[tab_id] = false;
-    updateIcon(tab_id);
+    return updateIcon(tab_id);
 }
 
 function enableReload(tab_id) {
     tabConfig[tab_id] = true;
-    updateIcon(tab_id);
+    return updateIcon(tab_id);
 }
 
 function responseStartedCallback(details) {
-    chrome.tabs.get(details.tabId, function(tab) {
+    browser.tabs.get(details.tabId).then((tab) => {
 	if (details.statusCode / 100 == 2) {
             delete failedTabs[tab.id];
-	    chrome.pageAction.hide(tab.id);
-	    disableReload(tab.id);
+            tabConfig[tab.id] = false;
 	} else {
             failedTabs[tab.id] = true;
-	    updateIcon(tab.id);
-	    chrome.pageAction.show(tab.id);
-            updateTabs();
+            if (!(tab.id in tabConfig)) {
+                tabConfig[tab.id] = false;
+            };
 	}
     });
 }
@@ -44,9 +43,9 @@ function scheduleCheck(timeout, iteration, tab) {
 }
 
 function periodicCheck(iteration, tab_id, url) {
-    chrome.tabs.get(tab_id, function(tab) {
+    browser.tabs.get(tab_id, function(tab) {
 	if (tab.url == url && tabConfig[tab_id]) {
-	    chrome.tabs.reload(tab_id, {bypassCache: true}, function() {
+	    browser.tabs.reload(tab_id, {bypassCache: true}, function() {
 		var delay = Math.min(60000, 1000 * Math.pow(2, iteration));
 		scheduleCheck(delay, Math.min(20, iteration + 1), tab);
 	    });
@@ -73,7 +72,7 @@ function isRetryEnabledForUrl(url, hostnames) {
 }
 
 function updateTabs() {
-    chrome.tabs.query({}, function(tabs) {
+    return browser.tabs.query({}).then(function(tabs) {
         for (var i = 0; i < tabs.length; i++) {
             var tab = tabs[i];
             if (isRetryEnabledForUrl(tab.url, retryHostnames)
@@ -94,8 +93,7 @@ function hostnamesListener(port, message) {
         } else {
             retryHostnames[hostname] = true;
         }
-        updateTabs();
-        postState(port);
+        updateTabs().then(() => postState(port));
     }
 }
 
@@ -112,12 +110,25 @@ function onConnectCallback(port) {
     }
 }
 
+function tabUpdateCallback(tabId, changeInfo, tabInfo) {
+    if (tabInfo.status == 'complete') {
+        if (failedTabs[tabId]) {
+            updateTabs().then(() => updateIcon(tabInfo.id));
+            browser.pageAction.show(tabId);
+        } else {
+            browser.pageAction.hide(tabId);
+        }
+    }
+}
+
 function initialize() {
     var filter = {types: ["main_frame"], urls: ["<all_urls>"]};
-    chrome.runtime.onConnect.removeListener(onConnectCallback);
-    chrome.runtime.onConnect.addListener(onConnectCallback);
-    chrome.webRequest.onCompleted.removeListener(responseStartedCallback);
-    chrome.webRequest.onCompleted.addListener(responseStartedCallback, filter);
+    browser.runtime.onConnect.removeListener(onConnectCallback)
+    browser.runtime.onConnect.addListener(onConnectCallback);
+    browser.webRequest.onCompleted.removeListener(responseStartedCallback);
+    browser.webRequest.onCompleted.addListener(responseStartedCallback, filter);
+    browser.tabs.onUpdated.removeListener(tabUpdateCallback);
+    browser.tabs.onUpdated.addListener(tabUpdateCallback);
 }
 
 initialize();

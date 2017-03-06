@@ -1,7 +1,7 @@
 {
     "manifest_version": 2,
     "name": "torelo",
-    "version": "0.3",
+    "version": "0.4",
     "description": "Tries to reload a page until it is available.",
     "background": {
 	"scripts": ["torelo.js"]

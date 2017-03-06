@@ -1,10 +1,10 @@
 import {subdomains} from './domains';
 
-var port = chrome.runtime.connect({name: 'hostnames'});
+var port = browser.runtime.connect({name: 'hostnames'});
 
 port.onMessage.addListener(function(message) {
     if (message.type == 'state') {
-        chrome.tabs.query({currentWindow: true, active: true}, function(tabs) {
+        browser.tabs.query({currentWindow: true, active: true}).then((tabs) => {
             var tab = tabs[0];
             var oldListNode = document.getElementById('hostname-list');
             var url = new URL(tab.url);
